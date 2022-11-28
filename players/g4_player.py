@@ -463,7 +463,7 @@ class Player:
         logger: logging.Logger,
         metabolism: float,
         goal_size: int,
-        precomp_dir: str
+        precomp_dir: str,
     ) -> None:
         """Initialise the player with the basic amoeba information
 
@@ -481,6 +481,8 @@ class Player:
         self.metabolism = metabolism
         self.goal_size = goal_size
         self.current_size = goal_size / 4
+        #number of steps that ameoba has taken
+        self.num_step=0
 
         self.strategies = dict(
             random_walk=RandomWalk(metabolism, rng),
@@ -514,6 +516,12 @@ class Player:
             current_percept.amoeba_map[i][j] = State.bacteria.value
             current_percept.current_size += 1
         self.current_size = current_percept.current_size
+        self.num_step+=1
+        info_float =(current_percept.current_size-self.goal_size/4)/self.num_step
+        #do we just take the int part or is there a better way tp estimate density
+        info= int(info_float)
+        #print(info)
+
 
         # TODO: dynamically select a strategy, possible factors:
         # current_size, metabolism, etc
