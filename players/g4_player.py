@@ -391,6 +391,14 @@ class BucketAttack(Strategy):
 
         return y_spreads
 
+    #TODO
+    def _spread_diagonally(self,y_center: int,
+        upper_cnt: int,
+        lower_cnt: int,
+        step=1)-> np.ndarray:
+        return []
+
+
     def _get_target_cells(self, size: int, cog: cell, xmax: int) -> list[cell]:
         """Returns the cells of the target shape by centering vertically on
         the y-value of Ameoba's center of gravity and placing the bucket arms
@@ -463,6 +471,20 @@ class BucketAttack(Strategy):
 
         return wall_cells
 
+    def _get_Vshpae_target(self, size: int, cog: cell, xmax: int) -> list[cell]:
+        _, y_cog = cog
+        arm_length,orphans =divmod(size/2)
+        upper_arm=[]
+        lower_arm=[]
+
+
+        return []
+
+    def _get_bridge_target(self,size: int, cog: cell, xmax: int) -> list[cell]:
+
+        return []
+
+
     def _get_cog(self, curr_state: AmoebaState) -> tuple[int, int]:
         """Compute center of gravity of current Ameoba."""
         ameoba_cells = np.array(list(zip(*np.where(curr_state.amoeba_map == State.ameoba.value))))
@@ -524,8 +546,6 @@ class BucketAttack(Strategy):
             return True
         return False
 
-    def _get_V_shape_target(self, size: int, cog: cell, xmax: int) -> list[cell]:
-        return []
 
     def move(
         self, prev_state: AmoebaState, state: AmoebaState, memory: int
@@ -566,6 +586,7 @@ class BucketAttack(Strategy):
         target_cells = self._get_target_cells(size, cog, arm_xval)
         memory = int(mem,2)
 
+        #TODO: need to modify normal_retract to fit the V_shape
         normal_retract, _,_=self._reshape(state, memory, set(target_cells))
         if len(normal_retract)==0:
             target_cells = self._get_rectangle_target(size, cog, arm_xval)
