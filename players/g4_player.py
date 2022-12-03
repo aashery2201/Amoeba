@@ -482,7 +482,7 @@ class BucketAttack(Strategy):
                                           .      .
                                           .      .
                         .                 .      .
-                      (xmax)
+                      (xmax
         """
         ameoba_xs, _ = np.where(curr_state.amoeba_map == State.ameoba.value)
         xmin, xmax = min(ameoba_xs), max(ameoba_xs)
@@ -515,6 +515,17 @@ class BucketAttack(Strategy):
         arms_got = len(np.where(curr_state.amoeba_map[xmax,:] == State.ameoba.value)[0])
 
         return arms_got >= arms_expected
+
+    def _reach_border(self, cells) -> bool:
+        y_cogs=list(zip(*cells))[1]
+        lower_bound=min(y_cogs)
+        upper_bound=max(y_cogs)
+        if abs(upper_bound-lower_bound)>= 98:
+            return True
+        return False
+
+    def _get_V_shape_target(self, size: int, cog: cell, xmax: int) -> list[cell]:
+        return []
 
     def move(
         self, prev_state: AmoebaState, state: AmoebaState, memory: int
@@ -558,6 +569,9 @@ class BucketAttack(Strategy):
         normal_retract, _,_=self._reshape(state, memory, set(target_cells))
         if len(normal_retract)==0:
             target_cells = self._get_rectangle_target(size, cog, arm_xval)
+
+        #TODO: if reach boder, return comb+1cell each step as the bridge + Vshape
+        #print(self._reach_border(target_cells))
 
         return self._reshape(state, memory, set(target_cells))
 
@@ -630,7 +644,6 @@ class Player:
         strategy = "bucket_attack"
 
         return self.strategies[strategy].move(last_percept, current_percept, info)
-
 
 #------------------------------------------------------------------------------
 #  Unit Tests
