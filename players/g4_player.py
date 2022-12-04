@@ -494,15 +494,23 @@ class BucketAttack(Strategy):
                         .                 .      .
                       (xmax)
         """
-        ameoba_xs, _ = np.where(curr_state.amoeba_map == State.ameoba.value)
-        xmin, xmax = min(ameoba_xs), max(ameoba_xs)
 
-        # TODO: 5 is a magic number that should work... This is hacky though.
-        if xmax == 99 and xmin < 5:
-            xs = ameoba_xs[ameoba_xs <= 5]
-            return max(xs)
+        # we concatenate the ameoba map along the x-axis forming a 200 * 100 map
+        #               x = 0 ... x = 99 x=100 ... x=199
 
-        return xmax
+        ameoba_map = np.vstack((curr_state.amoeba_map, curr_state.amoeba_map))
+        ameoba_xs, _ = np.where(ameoba_map == State.ameoba.value)
+
+        # we operate a subset (x=50 -> x=149) of this new map to find @xmax by
+        # searching from xmax=xmin, and increment xmax whenever we see a x-value
+        # immediately larger by 1
+        x_filter = (ameoba_xs >= constants.map_dim / 2) & (ameoba_xs < constants.map_dim * 1.5)
+        xs = sorted(set(ameoba_xs[x_filter]))
+        xmax = min(xs)
+        for x in xs:
+            xmax += int(x == xmax + 1)
+
+        return xmax % constants.map_dim
 
     def _in_shape(self, curr_state: AmoebaState) -> bool:
         """Returns a bool indicating if our bucket arms are in shape.
