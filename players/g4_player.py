@@ -392,6 +392,10 @@ class BucketAttack(Strategy):
         self.bucket_width = bucket_width
         self.shift_enabled = shift_n >= 1 and shift_n <= 16
         self.shift_n = shift_n
+
+        # derived statistics
+        self.wall_cost = self.bucket_width + 1
+        self.bucket_cost = 2 * self.wall_cost + 1
     
     def _spread_vertically(
         self,
@@ -422,8 +426,8 @@ class BucketAttack(Strategy):
         @size: current size of ameoba
         @cog: center of gravity for the target shape (only y-value used currently)
         """
-        wall_cost = self.bucket_width + 1
-        bucket_cost = 2 * wall_cost + 1 # 2 * wall_cost + arm_cost
+        wall_cost = self.wall_cost
+        bucket_cost = self.bucket_cost
 
         _, y_cog = cog
         buckets, orphans = divmod(size - 3, bucket_cost)
@@ -530,7 +534,7 @@ class BucketAttack(Strategy):
         way.
         """
         xmax = self._get_xmax(curr_state)
-        arms_expected = 1 + math.floor((curr_state.current_size - 3) / 7)
+        arms_expected = 1 + math.floor((curr_state.current_size - 3) / self.bucket_cost)
         arms_got = len(np.where(curr_state.amoeba_map[xmax,:] == State.ameoba.value)[0])
 
         return arms_got >= arms_expected
