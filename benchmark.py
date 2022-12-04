@@ -5,6 +5,10 @@ from main import parser
 from amoeba_game import AmoebaGame
 
 
+# -----------------------------------------------------------------------------
+# 	Helpers
+# -----------------------------------------------------------------------------
+
 # Suppress stdout
 # https://stackoverflow.com/questions/2828953/silence-the-stdout-of-a-function-in-python-without-trashing-sys-stdout-and-resto
 class DummyFile(object):
@@ -14,6 +18,10 @@ class DummyFile(object):
     def flush(self):
         pass
 
+
+# -----------------------------------------------------------------------------
+# 	Game Configuration
+# -----------------------------------------------------------------------------
 
 class GameConfig:
 
@@ -43,6 +51,25 @@ class GameConfig:
 		return self.base_args
 
 
+def create_config(
+	player: int,
+	size: int,
+	density: float,
+	metabolism: float
+) -> GameConfig:
+	return (
+		GameConfig()
+			.add_player(player)
+			.add_size(size)
+			.add_density(density)
+			.add_metabolism(metabolism)
+	)
+
+
+# -----------------------------------------------------------------------------
+# 	Benchmarking methods
+# -----------------------------------------------------------------------------
+
 def run(config: GameConfig) -> tuple[bool, int, float]:
 	"""Runs the simulator for the given game configuration, and returns
 	the results.
@@ -69,14 +96,12 @@ def run(config: GameConfig) -> tuple[bool, int, float]:
 	return ok, turns, ts
 
 
+# -----------------------------------------------------------------------------
+# 	Script Entrypoint
+# -----------------------------------------------------------------------------
+
 if __name__ == "__main__":
-	test_config = GameConfig()
-	(test_config
-		.add_player(4)
-		.add_metabolism(1)
-		.add_size(5)
-		.add_density(0.2)
-	)
+	test_config = create_config(4, 5, 0.2, 1)
 
 	ok, turns, ts = run(test_config)
 	print("{} - {} turns in {:.2f} second(s)".format(
