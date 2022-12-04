@@ -83,7 +83,7 @@ def run(config: GameConfig) -> tuple[bool, int, float]:
 	save_stdout = sys.stdout
 	sys.stdout = DummyFile()
 
-	args = parser.parse_args(test_config.get_args())
+	args = parser.parse_args(config.get_args())
 	game = AmoebaGame(args)
 
 	ok = game.goal_reached
