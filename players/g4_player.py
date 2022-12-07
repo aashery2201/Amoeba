@@ -1009,7 +1009,13 @@ class BucketXAttack(BucketAttack):
 
         # arm_xval: if we are in shape, advance arm_xval
         # otherwise, use prev_arm_xval to keep getting into shape
-        curr_cog = (50, 49) if shifted else (50, 50)
+        _, actual_y_cog = self._get_cog(state)
+        curr_y_cog = (
+            curr_arm_xval // 10 * 10
+        )
+
+        # TODO: maybe not always moving horizontally?
+        next_cog = curr_cog = (50, (curr_y_cog - 1) % 100) if shifted else (50, curr_y_cog)
         in_shape = self._in_shape(curr_arm_xval % 100, curr_cog, state)
         next_arm_xval = (curr_arm_xval + int(in_shape)) % 100
 
@@ -1027,12 +1033,10 @@ class BucketXAttack(BucketAttack):
             shifted = shifted ^ 1
             print("-----------shift---------------")
         print("curr_arm_xval:", curr_arm_xval, "next_arm_xval:", next_arm_xval)
+        print(f"----------current_size: {state.current_size}----------")
 
         # check for low density
         print("Is Low Density",self._check_low_density(self.goal_size, state, curr_cog[1]))
-
-        # TODO: maybe not always moving horizontally?
-        next_cog = (50, 49) if shifted else (50, 50)
 
         # ----------------
         #  Update Memory
