@@ -317,11 +317,12 @@ def is_square(current_percept: AmoebaState):
 
 class Strategy(ABC):
 
-    def __init__(self, metabolism: float) -> None:
+    def __init__(self, metabolism: float, goal_size: int) -> None:
         self.metabolism = metabolism
         self.shifted = 1
         self.rotation = 0
         self.vertical_comb_center = 50
+        self.goal_size=goal_size
 
     @abstractmethod
     def move(
@@ -385,8 +386,8 @@ class Strategy(ABC):
 
 
 class RandomWalk(Strategy):
-    def __init__(self, metabolism: float, rng: np.random.Generator) -> None:
-        super().__init__(metabolism)
+    def __init__(self, metabolism: float, goal_size:int, rng: np.random.Generator) -> None:
+        super().__init__(metabolism, goal_size)
         self.rng = rng
 
     def move(
@@ -549,7 +550,7 @@ class BoxFarm(Strategy):
 
 class BucketAttack(Strategy):
 
-    def __init__(self, metabolism, bucket_width=1, shift_n=-1):
+    def __init__(self, metabolism, goal_size, bucket_width=1, shift_n=-1):
         """Initializes BucketAttack.
 
         kwargs:
@@ -557,10 +558,11 @@ class BucketAttack(Strategy):
           shift_n: shift bucket arms up/down every n turns, acceptable n value
                    is [1, 16], otherwise the shifting behavior is disabled
         """
-        super().__init__(metabolism)
+        super().__init__(metabolism,goal_size)
         self.bucket_width = bucket_width
         self.shift_enabled = shift_n >= 1 and shift_n <= 16
         self.shift_n = shift_n
+        self.goal_size=goal_size
 
         # derived statistics
         self.wall_cost = self.bucket_width + 1
@@ -823,8 +825,8 @@ class BucketAttack(Strategy):
 
 class BucketXAttack(BucketAttack):
 
-    def __init__(self, metabolism, bucket_width=1, shift_n=-1, v_size=200):
-        super().__init__(metabolism, bucket_width=bucket_width, shift_n=shift_n)
+    def __init__(self, metabolism, goal_size, bucket_width=1, shift_n=-1, v_size=200):
+        super().__init__(metabolism, goal_size, bucket_width=bucket_width, shift_n=shift_n)
         self.v_size = v_size
 
     def _get_horizontal_comb_target_cells(self, size: int, cog: cell, ymax: int) -> list[cell]:
@@ -971,6 +973,18 @@ class BucketXAttack(BucketAttack):
 
         return comb_targets
 
+    def _check_low_density(self, goal_size:int ,state:AmoebaState, y_cog:int) -> bool:
+        if y_cog!= 49 and y_cog!= 50:
+            return True
+        curr_size=state.current_size
+        initial_size=goal_size//4
+        print((curr_size-initial_size)/initial_size)
+        if (curr_size-initial_size)/initial_size<0.2:
+            return True
+        return False
+
+
+
     def move(
         self, prev_state: AmoebaState, state: AmoebaState, memory: int
     ) -> tuple[list[cell], list[cell], int]:
@@ -979,6 +993,7 @@ class BucketXAttack(BucketAttack):
         #  Decode Memory
         # ----------------
         print(prev_state.current_size, state.current_size)
+
         if is_square(prev_state) and memory == 0:
             curr_arm_xval = self._get_xmax(state)
             shifted = 0
@@ -986,6 +1001,7 @@ class BucketXAttack(BucketAttack):
             mem = f'{memory:b}'.rjust(8, '0')
             curr_arm_xval = int(mem[:7], 2)
             shifted = int(mem[-1])
+
 
         # ---------------
         #  State Update
@@ -1011,6 +1027,9 @@ class BucketXAttack(BucketAttack):
             shifted = shifted ^ 1
             print("-----------shift---------------")
         print("curr_arm_xval:", curr_arm_xval, "next_arm_xval:", next_arm_xval)
+
+        # check for low density
+        print("Is Low Density",self._check_low_density(self.goal_size, state, curr_cog[1]))
 
         # TODO: maybe not always moving horizontally?
         next_cog = (50, 49) if shifted else (50, 50)
@@ -1090,15 +1109,17 @@ class Player:
         self.current_size = goal_size / 4
 
         self.strategies = dict(
-            random_walk=RandomWalk(metabolism, rng),
-            box_farm=BoxFarm(metabolism),
+            random_walk=RandomWalk(metabolism, goal_size,rng),
+            box_farm=BoxFarm(metabolism,goal_size),
             bucket_attack=BucketAttack(
                 metabolism,
+                goal_size,
                 bucket_width=BUCKET_WIDTH,
                 shift_n=SHIFT_CYCLE,
             ),
             bucketX_attack=BucketXAttack(
                 metabolism,
+                goal_size,
                 bucket_width=X_BUCKET_WIDTH,
                 shift_n=X_SHIFT_CYCLE,
                 v_size=V_SIZE
