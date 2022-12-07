@@ -559,10 +559,14 @@ class BucketAttack(Strategy):
                    is [1, 16], otherwise the shifting behavior is disabled
         """
         super().__init__(metabolism,goal_size)
-        self.bucket_width = bucket_width
         self.shift_enabled = shift_n >= 1 and shift_n <= 16
         self.shift_n = shift_n
         self.goal_size=goal_size
+
+        self._init_bucket_opts(bucket_width)
+
+    def _init_bucket_opts(self, bucket_width):
+        self.bucket_width = bucket_width
 
         # derived statistics
         self.wall_cost = self.bucket_width + 1
@@ -571,6 +575,7 @@ class BucketAttack(Strategy):
             2 * ((constants.map_dim // 2 - 1) // (self.bucket_width + 1) + 1) +
             2 * constants.map_dim
         )
+
 
     def _spread_vertically(
         self,
@@ -973,15 +978,30 @@ class BucketXAttack(BucketAttack):
 
         return comb_targets
 
-    def _check_low_density(self, goal_size:int ,state:AmoebaState, y_cog:int) -> bool:
-        if y_cog!= 49 and y_cog!= 50:
-            return True
+    def _check_low_density(self, goal_size:int ,state:AmoebaState, arm_xval:int) -> bool:
+        # ameoba grows too slowly -> low density
         curr_size=state.current_size
         initial_size=goal_size//4
         print((curr_size-initial_size)/initial_size)
-        if (curr_size-initial_size)/initial_size<0.2:
+        if (curr_size-initial_size)/initial_size<0.3 and arm_xval == 49:
             return True
+
         return False
+
+    def _check_out_of_phase(self, arm_xval: int, shift: int) -> bool:
+        # shift bit out of phase -> low density
+        # shift_bit_phase = {
+        #     64: 1, 80: 0, 96: 1, 16: 0, 32: 1, 48: 0
+        # } 
+
+        if (
+            arm_xval > 48 and arm_xval <= 64 or
+            arm_xval > 80 and arm_xval <= 96 or
+            arm_xval > 16 and arm_xval <= 32
+        ):
+            return shift == 1
+        else:
+            return shift == 0
 
 
 
@@ -1010,16 +1030,35 @@ class BucketXAttack(BucketAttack):
         # arm_xval: if we are in shape, advance arm_xval
         # otherwise, use prev_arm_xval to keep getting into shape
         _, actual_y_cog = self._get_cog(state)
-        curr_y_cog = (
-            curr_arm_xval // 10 * 10
-        )
+
+        # check for low density
+        curr_y_cog = 50
+
+        if self._check_low_density(self.goal_size, state, curr_arm_xval):
+            shifted = shifted ^ 1
+            curr_arm_xval += 1
+            # dynamic bucket width switching
+            self._init_bucket_opts(1)
+
+        if self._check_out_of_phase(curr_arm_xval, shifted):
+            curr_y_cog = curr_arm_xval // 10 * 10
+
+        # shift bit
+        # arm_xval  64 -> 80 -> 96 -> 16 -> 32 -> 48 -> 64 -> 80 -> ...
+        #           1  -> 0  -> 1  -> 0  -> 1  -> 0  -> 1  -> 0  -> ...
+        # curr_arm_xval = 63 & in shape -> phase bit would be 0
+        # curr_arm_xval = 63 & not in shape -> phase bit would be 0
+        # curr_arm_xval = 64 & not in shape -> phase bit would be 0
+        # curr_arm_xval = 64 & in shape -> phase bit would be 0
+        # curr_arm_xval = 1  -> phase bit would be 1
+            
 
         # TODO: maybe not always moving horizontally?
         next_cog = curr_cog = (50, (curr_y_cog - 1) % 100) if shifted else (50, curr_y_cog)
         in_shape = self._in_shape(curr_arm_xval % 100, curr_cog, state)
         next_arm_xval = (curr_arm_xval + int(in_shape)) % 100
 
-        shift = in_shape and (next_arm_xval % self.shift_n == 0)
+        shift = in_shape and curr_arm_xval != 0 and (curr_arm_xval % self.shift_n == 0)
         if self.shift_enabled and shift:
             # we are in shape and prepared to march forward with
             # the x-value of the bucket arm @arm_xval
@@ -1032,11 +1071,8 @@ class BucketXAttack(BucketAttack):
             # up and down in a never-ending loop.
             shifted = shifted ^ 1
             print("-----------shift---------------")
-        print("curr_arm_xval:", curr_arm_xval, "next_arm_xval:", next_arm_xval)
+        print("curr_arm_xval:", curr_arm_xval, "next_arm_xval:", curr_arm_xval)
         print(f"----------current_size: {state.current_size}----------")
-
-        # check for low density
-        print("Is Low Density",self._check_low_density(self.goal_size, state, curr_cog[1]))
 
         # ----------------
         #  Update Memory
@@ -1056,10 +1092,10 @@ class BucketXAttack(BucketAttack):
         print("reached border:", self._reach_border(state))
         if self._reach_border(state) and size > self.max_comb_size:
             print("phase: form x bucket")
-            target_cells = self._get_bridge_V_target_cells(size, next_cog, next_arm_xval)
+            target_cells = self._get_bridge_V_target_cells(size, next_cog, curr_arm_xval)
         else:
             print("phase: form comb")
-            target_cells = self._get_target_cells(size, next_cog, next_arm_xval)
+            target_cells = self._get_target_cells(size, next_cog, curr_arm_xval)
 
         # ----------------------------------
         #  compute moves: retract & extend
@@ -1070,7 +1106,7 @@ class BucketXAttack(BucketAttack):
         if len(retract) > 0:
             return retract, extend, memory
         else:
-            target_cells = self._get_rectangle_target(size, next_cog, next_arm_xval)
+            target_cells = self._get_rectangle_target(size, next_cog, curr_arm_xval)
             return self._reshape(state, memory, set(target_cells))
 
 
